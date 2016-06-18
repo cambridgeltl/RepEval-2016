@@ -1,0 +1,7 @@
+# The CoNLL'00 data (http://www.cnts.ua.ac.be/conll2000/chunking/)
+# does not include a separate development subset. To create the
+# train/devel split, the original train.txt was split to 3/4 train
+# and 1/4 devel as follows
+
+head -n 165501 train.txt > original-data/train.txt
+tail -n +165502 train.txt > original-data/devel.txt
