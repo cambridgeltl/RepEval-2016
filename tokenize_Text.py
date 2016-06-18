@@ -4,7 +4,7 @@ Created on 22 Mar 2016
 @author: Billy
 '''
 import getopt,sys,os,re
-sys.path.insert(0, '/tools/')
+sys.path.insert(0, sys.path[0] + '/tools/')
 from utilities import utilities
 
 
