@@ -7,10 +7,9 @@ from os import path
 from logging import info, warn
 
 from keras.models import Sequential
-from keras.layers import Embedding, Reshape, Dense, Activation, Dropout
+from keras.layers import Reshape, Dense, Activation
 from keras.layers import Merge, Flatten
-from keras.regularizers import l2
-from keras.optimizers import Adagrad, Adam
+from keras import optimizers
 from layers import Input, FixedEmbedding
 
 import input_data
@@ -21,25 +20,26 @@ import settings
 
 class Defaults(object):
     window = 2
-    max_vocab_size = 200000    # None
+    max_vocab_size = None
     max_train_examples = None
     max_develtest_examples = 100000    # for faster develtest
     examples_as_indices = True
-    learn_embeddings = False
     hidden_sizes = [300]
     hidden_activation = 'hard_sigmoid' # 'relu'
-    l2_lambda = 1e-5 # 1e-4
-    dropout = 0.5
     batch_size = 50
     epochs = 10
-    learning_rate = 0.001
     loss = 'categorical_crossentropy' # 'mse'
+    verbosity = 1    # 0=quiet, 1=progress bar, 2=one line per epoch
+    iobes = False     # Map tags to IOBES on input
+    token_level_eval = False    # Token-level eval even if IOB-like tagging
+    optimizer = 'adam' # 'sgd'
+    test = False
 
 config = settings.from_cli(['datadir', 'wordvecs'], Defaults)
-optimizer = Adam(config.learning_rate)
+optimizer = optimizers.get(config.optimizer)
 
-data_name = path.basename(config.datadir.rstrip('/'))
-common.setup_logging(data_name)
+output_name = 'mlp--' + path.basename(config.datadir.rstrip('/'))
+common.setup_logging(output_name)
 settings.log_with(config, info)
 
 # Data
@@ -58,8 +58,7 @@ model = Sequential()
 
 # Separate embedded-words and word-features sequences
 embedded = Sequential()
-EmbeddingLayer = Embedding if config.learn_embeddings else FixedEmbedding
-embedded.add(EmbeddingLayer(embedding.shape[0], embedding.shape[1],
+embedded.add(FixedEmbedding(embedding.shape[0], embedding.shape[1],
                             input_length=data.input_size, weights=[embedding]))
 features = Sequential()
 features.add(Input(data.feature_shape))
@@ -69,7 +68,7 @@ model.add(Flatten())
 
 # Fully connected layers
 for size in config.hidden_sizes:
-    model.add(Dense(size, W_regularizer=l2(config.l2_lambda)))
+    model.add(Dense(size))
     model.add(Activation(config.hidden_activation))
 model.add(Dense(data.output_size))
 model.add(Activation('softmax'))
@@ -80,13 +79,10 @@ def predictions(model, inputs):
     output = list(model.predict(inputs, batch_size=config.batch_size))
     return np.argmax(np.asarray(output), axis=1)
 
-def evaluate(model, dataset, config):
+def eval_report(prefix, model, dataset, config, log=info):
     pred = predictions(model, dataset.inputs)
     gold = np.argmax(dataset.labels, axis=1)
-    return common.per_type_summary(gold, pred, config)
-
-def eval_report(prefix, model, dataset, config, log=info):
-    summary = evaluate(model, dataset, config)
+    summary = common.performance_summary(dataset.words, gold, pred, config)
     for s in summary.split('\n'):
         log(prefix + ' ' + s)
 
@@ -95,7 +91,8 @@ small_devel = data.devel.subsample(config.max_develtest_examples)
 
 for epoch in range(1, config.epochs+1):
     model.fit(data.train.inputs, data.train.labels,
-              batch_size=config.batch_size, nb_epoch=1)
+              batch_size=config.batch_size, nb_epoch=1,
+              verbose=config.verbosity)
     eval_report('Ep %d train' % epoch, model, small_train, config)
     eval_report('Ep %d devel' % epoch, model, small_devel, config)
     data.train.shuffle()
@@ -104,4 +101,10 @@ eval_report('FINAL train', model, data.train, config)
 eval_report('FINAL devel', model, data.devel, config)
 
 pred = predictions(model, data.devel.inputs)
-common.save_gold_and_prediction(data.devel, pred, config, data_name)
+common.save_gold_and_prediction(data.devel, pred, config, output_name)
+
+if config.test:
+    eval_report('TEST', model, data.test, config)
+    pred = predictions(model, data.test.inputs)
+    common.save_gold_and_prediction(data.test, pred, config, 
+                                    'TEST--' + output_name)
