@@ -1,7 +1,7 @@
 import getopt,sys,os
 from nltk.tokenize import sent_tokenize
 
-sys.path.insert(0, '../tools/')
+sys.path.insert(0, sys.path[0] + '/tools/')
 from utilities import utilities
 
 reload(sys)  
