@@ -24,3 +24,6 @@ evaluate.py: perform intrinisic evaluation <br />
 Extrinsic evaluation: (Keras folder: Need either tensorflow or theano installed): <br />
 mlp.py: simple feed-forward Neural Network <br />
 setting.py: parameters for the Neual Network <br />
+
+## Remark
+The vector file are uploaded using git lfs file, please kindly install it and use command: "git lfs pull" to get the file 
