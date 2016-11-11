@@ -26,4 +26,6 @@ mlp.py: simple feed-forward Neural Network <br />
 setting.py: parameters for the Neual Network <br />
 
 ## Remark
-The vector file are uploaded using git lfs file, please kindly install it and use command: "git lfs pull" to get the file 
+
+https://drive.google.com/open?id=0BzMCqpcgEJgic0ttWTlyLWZOSVk
+
